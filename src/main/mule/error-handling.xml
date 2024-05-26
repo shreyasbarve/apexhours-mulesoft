@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="ab14fcbd-c10d-4002-a3e9-6fbf325ae226" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="3ccb0eab-32ab-4c2a-8f1a-d0353faba645" />
+	<configuration doc:name="Configuration" doc:id="8cc8ca73-39ac-447a-9b82-37c4e71643e5" defaultErrorHandler-ref="error-handlingError_Handler" />
+	<flow name="error-handlingFlow" doc:id="e6388e22-404b-4810-bbc4-192771ad2241" >
+		<http:listener doc:name="Listener" doc:id="f9fbab2b-cfba-44af-8cc2-43e99f6e3ae7" config-ref="HTTP_Listener_config" path="/error1">
+			<http:error-response >
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<set-variable value="Apple" doc:name="Set Variable" doc:id="0e280640-8969-4632-b59f-f631d2759236" variableName="fruit"/>
+		<ee:transform doc:name="Transform Message" doc:id="eadbb2f1-ed0d-4d6d-80f4-94f60ef3d7e6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="a0d3d9ee-eb25-4c5f-a7c8-3deac69e27a8" name="error-handlingFlow1"/>
+		<logger level="INFO" doc:name="Logger" doc:id="55dab048-ef0c-4e37-8531-dedf63afcf8d" message="#[payload]"/>
+	</flow>
+	<flow name="error-handlingFlow1" doc:id="6c510806-413e-4544-b131-6e2db1154fa5" >
+		<try doc:name="Try" doc:id="f90805e0-a3e7-4042-b975-b8840642e844">
+				<http:request method="PUT" doc:name="Request" doc:id="0b6df4dd-19cd-49db-a084-0b28ea3d68ca" config-ref="HTTP_Request_configuration" url="abc.xyz.com" />
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="f1a996d5-bd89-4a2c-ae7a-aa1267dcc3c2" >
+					<ee:transform doc:name="Transform Message" doc:id="6ec4838e-d40f-496b-9076-c5f74603cad0" >
+						<ee:message >
+							<ee:set-payload ><![CDATA["Error in Try Block"]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+			</try>
+		<ee:transform doc:name="Transform Message" doc:id="997421a9-5b11-4ca9-b1cd-04fb3eff65ca" >
+			<ee:message >
+				<ee:set-payload ><![CDATA["Success in private flow"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2c993373-9a2e-4c25-82b0-f87b72d2a920" >
+				<ee:transform doc:name="Transform Message" doc:id="476377fb-2a1d-403a-a3f9-f49262746b84">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+"Error occurred in private flow"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="8ef3bd30-19f0-4d1f-b326-d7df9a663abe" message="#[payload]" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="error-handlingFlow2" doc:id="05b55c09-e7f2-46ca-bc8f-b92862dc73c9" >
+		<http:listener doc:name="Raise Error" doc:id="deed588f-d433-4fae-9ed0-ffa1a63ed124" config-ref="HTTP_Listener_config" path="/raiseError"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="39d74c57-c21b-4e45-9f5b-a73b32b2d0fe" />
+		<choice doc:name="Choice" doc:id="1ff36733-fbd6-4a76-aa29-ddcc7e8685db" >
+			<when expression='#[payload != "apple"]'>
+				<raise-error doc:name="Raise error" doc:id="41856433-287f-4521-8cb2-c08ad8703022" description="The fruit is not apple" type="FRUIT:NOT_AN_APPLE"/>
+			</when>
+			<otherwise >
+				<set-payload value='#["It is apple"]' doc:name="Set Payload" doc:id="766f5c7b-1bf1-4872-9b25-a4546bdbc851" />
+			</otherwise>
+		</choice>
+	</flow>
+	<error-handler name="error-handlingError_Handler" doc:id="1585d627-81c9-4f1d-8b1c-dbeabc034db3" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="332a4cd8-0907-43f9-8bed-a3d203481efe" type="ANY">
+			<ee:transform doc:name="Transform Message" doc:id="32aadbe2-a3b8-478e-9f07-96a9fac80c4f" >
+				<ee:message >
+					<ee:set-payload ><![CDATA["Error happened in global handler in global propagate"]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		</on-error-propagate>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="31cb696e-5011-4ce3-a335-bc83ff9ea6f5" type="ANY">
+			<ee:transform doc:name="Transform Message" doc:id="0fe96a49-fd4a-471d-b99e-fba1d749762c" >
+				<ee:message >
+					<ee:set-payload ><![CDATA["Error happened in global handler in global continue"]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		</on-error-continue>
+	</error-handler>
+</mule>
