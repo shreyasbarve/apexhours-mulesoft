@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="7ebc1b1f-108b-4e1d-92b3-e961ae4f0ef0" >
+		<http:listener-connection host="0.0.0.0" port="${http.port}" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="47342d0f-58e1-4365-b94d-3cbd0c2d98bb" file="test.properties" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="88304fe8-232f-4071-bfd8-c54c125ec07b" />
+	<validation:config name="Validation_Config" doc:name="Validation Config" doc:id="e82d9649-15be-44f6-b599-eb6391526f3e" />
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="41e94207-5de1-443e-b6a8-8c2ae70ed441" >
+		<db:my-sql-connection host='#["localhost"]' port='#["3306"]' user='#["root"]' password="Pass@123" database='#["mule"]' />
+	</db:config>
+	<flow name="firstmulesoftprojectFlow" doc:id="11a96b84-c2c1-4182-86bc-2d6e0dae7c6a" >
+		<http:listener doc:name="Scatter Gather" doc:id="828ed835-f5e5-4d24-ba90-4e2b7ed00bae" config-ref="HTTP_Listener_config" path="/scatter-gather"/>
+		<set-variable value="#[attributes.queryParams.userId1]" doc:name="Set userId1" doc:id="a31b1027-d4c0-4ad0-b86d-2178764dda0f" variableName="userId1"/>
+		<set-variable value="#[attributes.queryParams.userId2]" doc:name="Set userId2" doc:id="a0f83c50-d823-44e4-9766-c237d39780f2" variableName="userId2" />
+		<scatter-gather doc:name="Scatter-Gather" doc:id="d1a134ca-0122-4ca7-a924-d9241a173849" >
+			<route >
+				<http:request method="GET" doc:name="JSON API userId1" doc:id="f6777fdc-cdc2-4a89-a4ec-baa0983fb050" config-ref="HTTP_Request_configuration" url='#["https://jsonplaceholder.typicode.com/users" ++ "/" ++  vars.userId1]' sendCorrelationId="ALWAYS">
+		</http:request>
+				<ee:transform doc:name="Transform Message" doc:id="452f3d01-dd3d-48b5-b4e2-355270c9ad8a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</route>
+			<route >
+				<http:request method="GET" doc:name="JSON API userId2" doc:id="28b2e13b-86e9-48f7-b13a-50e7ec54d6c4" config-ref="HTTP_Request_configuration" url='#["https://jsonplaceholder.typicode.com/users" ++ "/" ++  vars.userId2]'/>
+				<ee:transform doc:name="Transform Message1" doc:id="85b4fe52-89ea-40c2-90d4-5a7e2a828d37">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</route>
+		</scatter-gather>
+		<ee:transform doc:name="Transform Message" doc:id="1dde6009-a62c-45a2-848a-3e9130698f5e">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+	</flow>
+	<flow name="firstmulesoftprojectFlow1" doc:id="1d97cc62-6822-4267-9b20-8b34b1da955e">
+		<http:listener doc:name="Choice" doc:id="cd45bd3a-d04e-45a1-8833-29a6d8053165" config-ref="HTTP_Listener_config" path="/choice" />
+		<set-variable value="#[attributes.queryParams.fruit]" doc:name="Set Variable" doc:id="16b6fc06-7d3c-47f5-8a1e-eb5ef0039e26" variableName="fruitName"/>
+		<choice doc:name="Choice" doc:id="2fdd79cd-4b22-48c0-a08c-35459cf0569d" >
+			<when expression='#[vars.fruitName == "Apple"]'>
+				<set-payload value='#["You have passed: " ++ vars.fruitName]' doc:name="Set Payload" doc:id="90b397cf-7525-43b1-a6a0-5187323229b1" />
+			</when>
+			<otherwise >
+				<set-payload value='#["No fruit or fruit other than Apple was passed"]' doc:name="Set Payload" doc:id="8c9311b6-79f6-422e-87b9-e251e9cb328a" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="firstmulesoftprojectFlow2" doc:id="7bb782ff-0c25-4746-9995-e54b2c450b15" >
+		<http:listener doc:name="Validation" doc:id="a87f0e11-c9bc-4673-ba17-481343c1a5bc" config-ref="HTTP_Listener_config" path="/validation"/>
+		<ee:transform doc:name="Transform Message" doc:id="b9c8dbe9-5914-49fa-9df3-f8e70264fb91" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.id]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<validation:is-number doc:name="Is number" doc:id="b88725b0-bc9e-4b75-a695-5418e39a29cf" config-ref="Validation_Config" value="#[payload]" numberType="INTEGER" message='#["This is not a number, please check again!!"]'/>
+		<ee:transform doc:name="Transform Message" doc:id="e90bbb5e-baf6-47f8-b4db-aa1df09b3fef" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Success"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="firstmulesoftprojectFlow3" doc:id="f8cfa876-94f6-48ad-beec-2af398b51075" >
+		<http:listener doc:name="Database SELECT" doc:id="21357773-f43a-4899-b21b-bb18a5a6b515" config-ref="HTTP_Listener_config" path="/databaseSelect"/>
+		<db:select doc:name="Select" doc:id="c97e5de2-71b1-4bd9-863c-291fe5b8cefc" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM bankdetails]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="8aec6dba-aacb-4050-a002-1bfcb1423552" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="firstmulesoftprojectFlow4" doc:id="7409861a-137f-4ce6-a235-1bc2bc71fb8f" >
+		<http:listener doc:name="Database INSERT" doc:id="c5d900d0-a565-4a46-bad1-96c111e291e8" config-ref="HTTP_Listener_config" path="/databaseInsert"/>
+		<db:insert doc:name="Insert" doc:id="c4442782-8ea8-4334-92ac-a2483cbfb375" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO bankdetails (custname, accno, password, balance) VALUES (:custname, :accno, :password, :balance)
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	custname: payload.username,
+	accno: payload.account_number,
+	password: payload.password,
+	balance: payload.balance
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="c395307e-cf8f-4f71-8df7-8ffa64004049" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="firstmulesoftprojectFlow5" doc:id="cf72f6ac-c89c-4e86-a1f9-000124101e3d" >
+		<http:listener doc:name="Listener" doc:id="0afe3a1c-9c4c-4b4e-9fc2-e8e1481a48f6" config-ref="HTTP_Listener_config" path="/forEach"/>
+		<set-payload value="#[payload]" doc:name="[1, 2, 3, 4, 5]" doc:id="52bcd6cc-94f7-4de9-a869-79fa2fe35e29" />
+		<set-variable value="#[[]]" doc:name="Set Variable" doc:id="05e03d04-60ee-4057-a0e2-ff2599d64336" variableName="finalPayload" />
+		<parallel-foreach doc:name="Parallel For Each" doc:id="87ceffe4-c2ee-423d-89ae-ae0c570dbef6" target="finalPayload">
+			<set-payload value="#[payload + 10]" doc:name="Set Payload" doc:id="00557e12-1cb5-4d51-a05d-b8a4097d28db" />
+			<logger level="INFO" doc:name="Logger" doc:id="7f4e25fd-aaad-4d2b-9991-6aab73017853" message='#["For each inside payload value is: " ++ payload]' />
+			<set-variable value="#[output application/json --- vars.finalPayload + payload]" doc:name="Set Variable" doc:id="5b598da4-0a9f-4925-bbad-dd12631f6482" variableName="finalPayload" />
+		</parallel-foreach>
+		<set-payload value="#[vars.finalPayload]" doc:name="Set Payload" doc:id="cde747df-2247-4f98-aada-4842997b887f" />
+		<logger level="INFO" doc:name="Logger" doc:id="596585ec-bc9a-44c1-8f4f-66350b6eaddd" message="#[payload]"/>
+	</flow>
+	<flow name="firstmulesoftprojectFlow6" doc:id="e7f5ef88-7438-4c72-9790-551ee0a81018" >
+		<http:listener doc:name="Listener" doc:id="95d5f4b5-478c-49b0-836e-86b3b31e3b12" config-ref="HTTP_Listener_config" path="/batch"/>
+		<batch:job jobName="firstmulesoftprojectBatch_Job" doc:id="21c88ff5-d17f-4b7b-8893-70155cfefe1a" maxFailedRecords="2">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="704dc637-d639-4b8c-a76b-3aab75eaa5e9" >
+					<set-payload value="#[payload + 10]" doc:name="Set Payload" doc:id="7d350dae-f46b-4669-9ecb-08f327989c23" />
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="8c754192-4cc3-461e-ac18-53980c15056a" size="2">
+						<logger level="INFO" doc:name="Logger" doc:id="2d45450c-6ab3-4594-b292-da1ddf8ac83d" message="#[payload + 10]"/>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="e2bd14ce-614e-4de9-a893-be462f8bd820" message="#[payload]" />
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>
