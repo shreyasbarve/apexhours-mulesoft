@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="618d4279-ec52-47f0-a0a0-44f593bae741" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="c26f59cf-8c67-493a-ba0c-da6d5aeeb07c" >
+		<salesforce:basic-connection username="shreyas_barve@creative-otter-p6qqwp.com" password="Pass@12345" securityToken="up4Fe1M3qNIWubEO66PoMVMz" />
+	</salesforce:sfdc-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="3721a5b8-0b70-4e5e-99c4-8ba28eef7133" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Pass@123" database="mule" />
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="fefe849c-c328-4c9e-8409-133d827f1b8d" />
+	<flow name="salesforce-integration-projectFlow" doc:id="fe966549-2319-4551-ae52-392f1985b984" >
+		<http:listener doc:name="Create Account" doc:id="776753c9-6aa8-432d-9739-8bec9a12a21d" path="/salesforceCreate" config-ref="HTTP_Listener_config"/>
+		<ee:transform doc:name="Transform Message" doc:id="019a62f6-a20e-48e0-9fa1-5d1c0e9c5435" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create type="Account" doc:name="Create" doc:id="178ce5a3-c10a-4f7c-92cb-86ab21083a60" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="6b1d1835-3cf8-4389-aa6f-a431ec37c7dd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="salesforce-integration-projectFlow1" doc:id="1706f4a5-6b02-4d74-aec8-db46851af8d1">
+		<salesforce:modified-object-listener objectType="Lead" doc:name="On Modified Object" doc:id="37afca0d-c6c3-4087-b6b2-689f9ae97b1b" config-ref="Salesforce_Config">
+			<scheduling-strategy>
+				<fixed-frequency />
+			</scheduling-strategy>
+		</salesforce:modified-object-listener>
+		<ee:transform doc:name="Transform Message" doc:id="138bf747-d3ee-410b-a717-6d9928ce33f9">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="6089fe94-8d62-454d-a725-37055b20880e">
+			<route>
+				<db:insert doc:name="Insert" doc:id="83c95333-6224-41d8-896b-4d9ebc42361d" config-ref="Database_Config">
+			<db:sql><![CDATA[INSERT INTO salesforce_leads (Id, LastName, Company, Email, Status) VALUES (:Id, :LastName, :Company, :Email, :Status);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	Id: payload.Id,
+	LastName: payload.LastName,
+	Company: payload.Company,
+	Email: payload.Email,
+	Status: payload.Status
+}]]]></db:input-parameters>
+		</db:insert>
+			</route>
+			<route>
+				<file:write doc:name="Write" doc:id="f323f2ff-10e1-45fe-a8c0-dda57b50f854" config-ref="File_Config" path="D:\Workspace\anypoint-studio-workspace\SalesforceLeads.csv" mode="APPEND">
+					<file:content><![CDATA[#[output application/csv
+---
+[payload]]]]></file:content>
+				</file:write>
+			</route>
+		</scatter-gather>
+	</flow>
+	<flow name="salesforce-integration-projectFlow2" doc:id="a7cf2eb6-e4e2-486e-9db5-198beb4edb64" >
+		<http:listener doc:name="Update Account" doc:id="6a89053c-4c0d-4a36-bfa8-ae23129e9322" config-ref="HTTP_Listener_config" path="/salesforceUpdate" />
+		<ee:transform doc:name="Transform Message" doc:id="8c61c60c-1451-4b16-842b-e43069695c15" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:update type="Account" doc:name="Update" doc:id="551e981e-5c4d-48ba-a65c-d66747cc224e" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="e2e3096c-4e2d-42f6-9e7f-08793d4dc323" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="salesforce-integration-projectFlow3" doc:id="7eb1a033-4e02-4e2a-86c6-b19967c31c16" >
+		<http:listener doc:name="Query Account" doc:id="8a9a8ece-59ea-4d60-8b8e-bab15f8421a6" config-ref="HTTP_Listener_config" path="/salesforceQuery" />
+		<ee:transform doc:name="Transform Message" doc:id="93ed4d76-2678-425c-a1f8-ada829bc0d96" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:query doc:name="Query" doc:id="5f8f577b-2f54-4df1-bf3b-8f31b51c33de" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[SELECT Id, Name, Website, Email FROM Account LIMIT 200]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="3a67d85d-8900-44c1-b78c-6a0c07aa42f7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="salesforce-integration-projectFlow4" doc:id="ec3ad138-5b1e-4b63-b30b-f013a7c3ba31" >
+		<http:listener doc:name="Upsert Account" doc:id="44f5a591-f076-466b-9a6d-6d60bc22103e" config-ref="HTTP_Listener_config" path="/salesforceUpsert" />
+		<ee:transform doc:name="Transform Message" doc:id="709a7efa-b1af-4651-a108-b93d187bbcd6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert doc:name="Upsert" doc:id="40afad83-0d18-4222-b570-af7d5eba0bca" config-ref="Salesforce_Config" objectType="Account" externalIdFieldName="RollNo__c"/>
+		<ee:transform doc:name="Transform Message" doc:id="041c26cb-ea57-4f09-b784-0aee18e7c5d7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="salesforce-integration-projectFlow5" doc:id="26835ec7-1517-48fd-bc84-d66cf6cdc75d" >
+		<http:listener doc:name="Platform Event Listener" doc:id="356bb83a-41ac-4e2f-9eb1-2d45588ead2b" config-ref="HTTP_Listener_config" path="/salesforcePlatformEvent" />
+		<ee:transform doc:name="Transform Message" doc:id="903c0694-12f0-47b1-ad85-f202d8a98567" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:publish-platform-event-message doc:name="Publish platform event message" doc:id="3285798f-d5d8-4478-9906-3ba49949ef03" config-ref="Salesforce_Config" platformEventName="MuleSoftPlatformEvent__e"/>
+		<ee:transform doc:name="Transform Message" doc:id="31dbb4c2-3869-4379-946c-43292a6fba48" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="salesforce-integration-projectFlow6" doc:id="76e5f000-35cb-4eb9-9dfb-3ba62890dba8" >
+		<salesforce:subscribe-channel-listener streamingChannel="/event/MuleSoftPlatformEvent__e" doc:name="Subscribe channel listener" doc:id="4b9d1866-80f7-4dd7-8803-ce20b91ac04f" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="bd762d24-d28a-4601-b17c-0cbf031281a5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="b91e03d8-4a9d-4505-b707-671808af1f60" message="#[payload]"/>
+	</flow>
+</mule>
